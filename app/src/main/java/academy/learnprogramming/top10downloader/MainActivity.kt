@@ -12,9 +12,6 @@ import kotlinx.android.synthetic.main.activity_main.*
 import java.net.URL
 import kotlin.properties.Delegates
 
-private const val STATE_FEED_URL = "FeedUrl"
-private const val STATE_FEED_LIMIT = "FeedLimit"
-
 class FeedEntry {
     var name: String = ""
     var artist: String = ""
@@ -40,24 +37,35 @@ class MainActivity : AppCompatActivity() {
         "http://ax.itunes.apple.com/WebObjects/MZStoreServices.woa/ws/RSS/topfreeapplications/limit=%d/xml"
     private var feedLimit = 10
 
+    private var feedCachedUrl = "INVALIDATED"
+    private val STATE_URL = "feedUrl"
+    private val STATE_LIMIT = "feedLimit"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState != null) {
-            feedUrl = savedInstanceState?.getString(STATE_FEED_URL, feedUrl)
-            feedLimit = savedInstanceState?.getInt(STATE_FEED_LIMIT)
-        }
-
         setContentView(R.layout.activity_main)
+
+        Log.d(tag, "onCreate called")
+
+        if (savedInstanceState != null) {
+            feedUrl = savedInstanceState.getString(STATE_URL, feedUrl)
+            feedLimit = savedInstanceState.getInt(STATE_LIMIT)
+        }
 
         downloadUrl(feedUrl.format(feedLimit))
         Log.d(tag, "onCreate done")
     }
 
-    private fun downloadUrl(feedURL: String) {
-        Log.d(tag, "downloadUrl start AsyncTask")
-        downloadData = DownloadData(this, xmlListView)
-        downloadData?.execute(feedURL)
-        Log.d(tag, "downloadUrl done")
+    private fun downloadUrl(feedUrl: String) {
+        if (feedUrl != feedCachedUrl) {
+            Log.d(tag, "downloadUrl start AsyncTask")
+            downloadData = DownloadData(this, xmlListView)
+            downloadData?.execute(feedUrl)
+            feedCachedUrl = feedUrl
+            Log.d(tag, "downloadUrl done")
+        } else {
+            Log.d(tag, "downloadUrl - URL not changed")
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -73,9 +81,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        val oldFeedUrl = feedUrl
-        var feedUrlChanged = false
-        var feedLimitChanged = false
         when (item.itemId) {
             R.id.mnuFree ->
                 feedUrl =
@@ -90,7 +95,6 @@ class MainActivity : AppCompatActivity() {
                 if (!item.isChecked) {
                     item.isChecked = true
                     feedLimit = 35 - feedLimit
-                    feedLimitChanged = true
                     Log.d(
                         tag,
                         "onOptionsItemSelected: ${item.title} setting feedLimit to $feedLimit"
@@ -99,28 +103,20 @@ class MainActivity : AppCompatActivity() {
                     Log.d(tag, "onOptionsItemSelected: ${item.title} setting feedLimit unchanged")
                 }
             }
-            R.id.mnuRefresh -> {
-                downloadUrl(feedUrl.format(feedLimit))
-                return true
-            }
+            R.id.mnuRefresh -> feedCachedUrl = "INVALIDATED"
             else ->
                 return super.onOptionsItemSelected(item)
         }
 
-        if (oldFeedUrl != feedUrl) {
-            feedUrlChanged = true
-        }
+        downloadUrl(feedUrl.format(feedLimit))
 
-        if (feedUrlChanged || feedLimitChanged) {
-            downloadUrl(feedUrl.format(feedLimit))
-        }
         return true
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        outState.putInt(STATE_FEED_LIMIT, feedLimit)
-        outState.putString(STATE_FEED_URL, feedUrl)
         super.onSaveInstanceState(outState)
+        outState.putString(STATE_URL, feedUrl)
+        outState.putInt(STATE_LIMIT, feedLimit)
     }
 
     override fun onDestroy() {
