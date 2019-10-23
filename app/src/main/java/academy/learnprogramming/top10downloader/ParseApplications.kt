@@ -26,7 +26,6 @@ class ParseApplications {
                 val tagName = xpp.name?.toLowerCase()
                 when (eventType) {
                     XmlPullParser.START_TAG -> {
-                        Log.d(TAG, "Parse: starting tag for $tagName")
                         if (tagName == "entry") {
                             inEntry = true
                         }
@@ -35,7 +34,6 @@ class ParseApplications {
                     XmlPullParser.TEXT -> textValue = xpp.text
 
                     XmlPullParser.END_TAG -> {
-                        Log.d(TAG, "parse: ending tag for $tagName")
                         if (inEntry) {
                             when (tagName) {
                                 "entry" -> {
@@ -55,11 +53,6 @@ class ParseApplications {
                 }
                 eventType = xpp.next()
             }
-            for (app in applications) {
-                Log.d(TAG, "********************")
-                Log.d(TAG, app.toString())
-            }
-
         } catch (e: Exception) {
             e.printStackTrace()
             status = false
